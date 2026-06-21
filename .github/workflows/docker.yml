@@ -1,6 +1,17 @@
 name: Build Docker Image
 
 on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Image name, for example: jy02739245/iorigrok'
+        required: false
+        type: string
+      tag:
+        description: 'Image tag'
+        required: false
+        default: latest
+        type: string
   push:
     branches:
       - main
@@ -12,7 +23,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.event.inputs.image_name || github.repository }}
 
 jobs:
   build-and-push:
@@ -46,9 +57,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref_type == 'branch' }}
-            type=ref,event=tag
-            type=semver,pattern={{version}}
+            type=raw,value=${{ github.event.inputs.tag || 'latest' }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=latest,enable=${{ github.event_name != 'workflow_dispatch' && github.ref_type == 'branch' }}
+            type=ref,event=tag,enable=${{ github.event_name != 'workflow_dispatch' }}
+            type=semver,pattern={{version}},enable=${{ github.event_name != 'workflow_dispatch' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
